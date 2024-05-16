@@ -334,8 +334,8 @@ router.post('/forgotpassword', async (req, res) => {
         port: 587,
         secure: false, // Use `true` for port 465, `false` for all other ports
         auth: {
-          user: "abhay@keymatrixsolutions.com",
-          pass: "Djrocky1281@*",
+          user: "",
+          pass: "",
         },
       });
 

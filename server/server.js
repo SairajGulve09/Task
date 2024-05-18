@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const multer = require('multer');
@@ -48,8 +48,8 @@ const upload = multer({ storage });
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: '',
-  database: 'data', // Change this to your database name
+  password: 'root',
+  database: 'keymatrix', // Change this to your database name
 });
 
 db.connect((err) => {
@@ -78,7 +78,6 @@ function verifyToken(req, res, next) {
   });
 }
 
-
 // Route to fetch user data
 app.get('/user', verifyToken, (req, res) => {
   const userId = req.userId;
@@ -99,17 +98,28 @@ app.get('/user', verifyToken, (req, res) => {
 
 // Route to handle signup
 app.post('/signup', (req, res) => {
-  const { fullname, email, password } = req.body;
-  const sql = 'INSERT INTO users (fullname, email, password) VALUES (?, ?, ?)';
-  const values = [fullname, email, password];
+  const { fullname, email, password, confirm_password } = req.body;
+  const sql = 'INSERT INTO users (fullname, email, password, confirm_password) VALUES (?, ?, ?, ?)';
+  const values = [fullname, email, password,confirm_password];
 
   db.query(sql, values, (err, result) => {
     if (err) {
       console.error('Signup failed:', err);
       return res.status(500).send('Signup failed');
     }
+
     console.log('User registered successfully');
-    res.status(201).send('User registered successfully');
+
+    const payload = { /* Add user data to payload */ };
+    const options = { expiresIn: '1h' };
+    const token = jwt.sign(payload, secretKey, options);
+
+    // Send token in response
+    return res.status(200).json({ message: 'SignUp successful', token });
+    // res.status(201).send('User registered successfully');
+
+    
+    
   });
 });
 
@@ -227,8 +237,9 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Save profile data endpoint
 app.post('/profiles', (req, res) => {
-  const { userId, ...profileData } = req.body; // Extract userId from req.body
+  const { userId, socialMediaIds, ...profileData } = req.body; // Extract userId and socialMediaIds from req.body
   profileData.userId = userId; // Add userId to profileData
+  profileData.socialMediaIds = JSON.stringify(socialMediaIds); // Convert socialMediaIds array to JSON string
 
   // Insert profile data into MySQL
   const sql = 'INSERT INTO profiles SET ?';
@@ -242,10 +253,8 @@ app.post('/profiles', (req, res) => {
   });
 });
 
-
-
 // Route to fetch all profiles (protected route)
-app.get('/profiles', verifyToken, (req, res) => {
+app.get('/profiles', (req, res) => {
   const sql = 'SELECT * FROM profiles';
   db.query(sql, (err, results) => {
     if (err) {
@@ -299,64 +308,6 @@ function verifyToken(req, res, next) {
     next();
   });
 }
-
-// Example protected route that requires token verification
-app.get('/protected', verifyToken, (req, res) => {
-  res.json({ message: 'Access granted' });
-});
-
-
-router.post('/forgotpassword', async (req, res) => {
-  const { email } = req.body;
-  try {
-    // Query the database to find the user by email
-    const sql = 'SELECT * FROM users WHERE email = ?';
-    db.query(sql, email, async (err, results) => {
-      if (err) {
-        console.error('Error finding user:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-
-      // Check if user with the provided email exists
-      if (results.length === 0) {
-        return res.json({ message: "User not registered" });
-      }
-
-      // Get the user details from the query results
-      const user = results[0];
-
-      // Generate JWT token for password reset link
-      const token = jwt.sign({ userId: user.userId }, process.env.JWT_SECRET, { expiresIn: '5m' });
-
-      // Configure Nodemailer transporter
-      const transporter = nodemailer.createTransport({
-        host: "mail.keymatrixsolutions.com",
-        port: 587,
-        secure: false, // Use `true` for port 465, `false` for all other ports
-        auth: {
-          user: "",
-          pass: "",
-        },
-      });
-
-      // Send password reset email
-      const info = await transporter.sendMail({
-        from: '"No Reply 👻" <abhay@keymatrixsolutions.com>',
-        to: email,
-        subject: "Reset Password",
-        text: `Reset your password using this link: http://localhost:3000/ForgotPassword/${token}`,
-        // Assuming you have an HTML template for the email
-        // html: `<p>Reset your password using this link: <a href="http://localhost:3000/ForgotPassword/${token}">Reset Password</a></p>`,
-      });
-
-      console.log("Message sent: %s", info.messageId);
-      res.json({ message: "Password reset email sent successfully" });
-    });
-  } catch (err) {
-    console.error("Error sending password reset email:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
 
 

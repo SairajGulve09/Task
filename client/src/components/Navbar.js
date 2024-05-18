@@ -1,15 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { NavLink } from 'react-router-dom'
 
-function Navbar({ isLoggedIn, setIsLoggedIn }) {
+function Navbar() {
+  // State variables
   const [showDropdown, setShowDropdown] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  
+  // Hooks
   const navigate = useNavigate();
+  const { isLoggedIn, LogoutUser } = useAuth();
 
+  // Update the loggedIn state when the isLoggedIn value changes
+  useEffect(() => {
+    setLoggedIn(isLoggedIn);
+  }, [isLoggedIn]);
+
+  // Handle logout
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    navigate('/'); // Redirect to home page after logout
+    LogoutUser();
+    navigate('/login');
   };
 
+  // JSX code for the navbar
   return (
     <nav className="bg-gray-800 py-4">
       <div className="container mx-auto flex justify-between items-center">
@@ -42,7 +56,7 @@ function Navbar({ isLoggedIn, setIsLoggedIn }) {
 
         {/* Right side */}
         <div className="flex items-center">
-          {isLoggedIn ? (
+          {loggedIn ? (
             <div className="relative inline-block text-left">
               <button
                 className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75"
@@ -65,7 +79,6 @@ function Navbar({ isLoggedIn, setIsLoggedIn }) {
           ) : (
             <div className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full">
               <Link to="/login" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full">Login</Link>
-              
             </div>
           )}
         </div>

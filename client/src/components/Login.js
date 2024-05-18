@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate} from "react-router-dom"; // Import useHistory
 import axios from 'axios';
+import {useAuth} from "../context/AuthContext"
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -8,15 +9,19 @@ const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate(); // Initialize useHistory hook
+  const {storeTokenInLs, isLoggedIn} = useAuth();
+
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post('http://localhost:5000/login', { email, password });
       const { token } = response.data;
-      localStorage.setItem('token', token); // Save token to localStorage
+      console.log("This is token",token);
+      localStorage.setItem("token", token);
+      console.log("isLoggedin ", isLoggedIn);
       // Redirect to profile settings page upon successful login
-      navigate("/profile-settings");
+      navigate("/");
     } catch (error) {
       setError(error.response.data.error || 'Failed to login');
     }

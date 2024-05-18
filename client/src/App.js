@@ -14,7 +14,8 @@ import ForgotPassword from './components/ForgotPassword';
 import Sidebar from './components/Sidebar';
 import Carousel from './components/carousel';
 
-
+import {} from "./context/AuthContext"
+import Logout from './components/Logout';
 
 const App = () => {
   
@@ -28,6 +29,7 @@ const App = () => {
           <Routes>
             <Route exact path="/" element={<Homepage />} />
             <Route exact path="/login" element={<Login />} />
+            <Route exact path="/logout" element={<Logout />} />
             <Route exact path="/signup" element={<Signup />} />
             <Route exact path="/pricing" element={<Pricing />} />
             <Route exact path="/profiles" element={<Profilepage />} />

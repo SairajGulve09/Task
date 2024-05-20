@@ -10,7 +10,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Server } = require("socket.io");
-
+// const {verifyToken} = require("./verifyToken")
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -79,7 +79,7 @@ function verifyToken(req, res, next) {
 }
 
 // Route to fetch user data
-app.get('/user', verifyToken, (req, res) => {
+app.get('/user',verifyToken, (req, res) => {
   const userId = req.userId;
   const sql = 'SELECT * FROM users WHERE userId = ?';
   db.query(sql, userId, (err, results) => {
@@ -94,6 +94,26 @@ app.get('/user', verifyToken, (req, res) => {
     res.status(200).json(userData);
   });
 });
+
+//search profile
+app.get("/search/:key", (req,res)=>{
+  const key = req.params.key;
+  const sql = 'SELECT * FROM profiles WHERE username LIKE ? OR fullName LIKE ? OR email LIKE ? OR location LIKE ? OR socialMediaIds LIKE ? OR shortDescription LIKE ? OR oneLineDescription LIKE ?;'
+  const searchPattern = `%${key}%`;
+  const searchArr = [searchPattern,searchPattern,searchPattern,searchPattern,searchPattern,searchPattern,searchPattern]
+
+  db.query(sql,searchArr,(err,results)=>{
+    if (err) {
+      console.error('Error in searching profile data:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+    // const profileData = results[0];
+    res.status(200).json(results);
+  })
+})
 
 
 // Route to handle signup

@@ -18,12 +18,12 @@ const Homepage = () => {
                 }
 
                 console.log('Headers sent:', { // Moved the console.log statement inside axios.get
-                    Authorization: `Bearer ${token}`
+                    Authorization: `${token}`
                 });
 
                 const response = await axios.get('http://localhost:5000/profiles', {
                     headers: { // Added headers object for Authorization
-                        Authorization: `Bearer ${token}`
+                        Authorization: `${token}`
                     }
                 });
 

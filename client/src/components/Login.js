@@ -12,30 +12,6 @@ const LoginPage = () => {
   const {storeTokenInLs} = useAuth();
 
 
-  // const handleLogin = async (e) => {
-  //   e.preventDefault();
-  //   try {
-  //     const response = await axios.post('http://localhost:5000/login', { email, password });
-      
-  //     if(response && response.data){
-  //       // const res_data= response.data.token;
-  //       console.log("This is token",response.data.token);
-  //       storeTokenInLs(response.data.token)
-  //     }
-  //     else{
-  //       console.error('No data found in response');
-  //     }
-      
-  //     // localStorage.setItem("token", token);
-  //     // let isLoggedIn = !!token;
-  //     console.log("isLoggedin_ ", isLoggedIn);
-  //     // Redirect to profile settings page upon successful login
-  //     navigate("/");
-  //   } catch (error) {
-  //     setError(error.response.data.error || 'Failed to login');
-  //   }
-  // };
-
   const handleLogin = async (e) =>{
     e.preventDefault();
     // console.log(user);

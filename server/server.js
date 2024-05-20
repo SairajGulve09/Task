@@ -156,9 +156,11 @@ app.post('/signup', (req, res) => {
 
     console.log('User registered successfully');
 
-    const payload = { /* Add user data to payload */ };
+    const userData = {
+      id: result[0].id
+    };
     const options = { expiresIn: '1h' };
-    const token = jwt.sign(payload, secretKey, options);
+    const token = jwt.sign(userData, secretKey, options);
 
     // Send token in response
     return res.status(200).json({ message: 'SignUp successful', token });
@@ -204,98 +206,16 @@ app.post('/login', (req, res) => {
 });
 
 
-
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-
-// WebSocket event listeners
-io.on("connection", (socket) => {
-  console.log("A new user has connected", socket.id);
-
-  // Listen for incoming messages from clients
-  socket.on("message", async (message) => {
-    try {
-      // Perform asynchronous operations here if needed
-      // For example, you can save the message to the database before broadcasting
-      // await saveMessageToDatabase(message);
-      
-      // Broadcast the message to all connected clients
-      io.emit("message", message);
-    } catch (error) {
-      console.error("Error handling message:", error);
-      // Handle errors gracefully
-    }
-  });
-
-  // Handle disconnections
-  socket.on("disconnect", () => {
-    console.log(socket.id, " disconnected");
-  });
-});
-
-// Example route for sending a message
-app.post('/send-message', (req, res) => {
-  const { senderId, recipientId, message } = req.body;
-
-  // Check if senderId and recipientId are provided
-  if (!senderId || !recipientId) {
-    return res.status(400).json({ error: 'Sender ID and recipient ID are required' });
-  }
-
-  // Construct the SQL query string
-  const sql = 'INSERT INTO messages (sender_id, recipient_id, message) VALUES (?, ?, ?)';
-  const values = [senderId, recipientId, message];
-
-  // Insert the message into the database
-  db.query(sql, values, (err, result) => {
-    if (err) {
-      console.error('Error sending message:', err);
-      res.status(500).json({ error: 'Internal server error' });
-      return;
-    }
-    res.status(200).json({ message: 'Message sent successfully' });
-  });
-});
-
-
-// Example route for fetching messages
-app.get('/fetch-messages', (req, res) => {
-  const { userId } = req.query;
-
-  // Assuming you have a 'messages' table in your database
-  // Fetch messages where the user is the sender or recipient
-  const sql = 'SELECT * FROM messages WHERE sender_id = ? OR recipient_id = ?';
-  const values = [userId, userId];
-
-  // Query the database for messages
-  db.query(sql, values, (err, results) => {
-    if (err) {
-      console.error('Error fetching messages:', err);
-      res.status(500).json({ error: 'Internal server error' });
-      return;
-    }
-    res.status(200).json(results);
-  });
-});
-
-// Middleware
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
 // Save profile data endpoint
 app.post('/create-profile', verifyToken, (req, res) => {
   const {
     profilePhoto, firstName, lastName, email, location, category,
     otherCategory, businessLocation, businessType, businessCategory,
+    businessSubcategory, influencerCategory, influencerSubcategory,
     contentType, platforms, followers, socialMediaIds
   } = req.body;
 
-  console.log("Id is: ",req.userId);
+  console.log("Id is: ", req.userId);
 
   // Insert into profile table
   const profileSql = `
@@ -316,10 +236,10 @@ app.post('/create-profile', verifyToken, (req, res) => {
 
     if (category === 'businessman') {
       const businessSql = `
-        INSERT INTO business_profile (profileId, businessLocation, businessType, businessCategory)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO business_profile (profileId, businessLocation, businessType, businessCategory, businessSubcategory)
+        VALUES (?, ?, ?, ?, ?)
       `;
-      const businessValues = [profileId, businessLocation, businessType, businessCategory];
+      const businessValues = [profileId, businessLocation, businessType, businessCategory, businessSubcategory];
 
       db.query(businessSql, businessValues, (err, result) => {
         if (err) {
@@ -330,10 +250,10 @@ app.post('/create-profile', verifyToken, (req, res) => {
       });
     } else if (category === 'influencer') {
       const influencerSql = `
-        INSERT INTO influencer_profile (profileId, contentType, platforms, followers)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO influencer_profile (profileId, contentType, platforms, followers, influencerCategory, influencerSubcategory)
+        VALUES (?, ?, ?, ?, ?, ?)
       `;
-      const influencerValues = [profileId, contentType, platforms.join(','), followers];
+      const influencerValues = [profileId, contentType, platforms.join(','), followers, influencerCategory, influencerSubcategory];
 
       db.query(influencerSql, influencerValues, (err, result) => {
         if (err) {
@@ -341,7 +261,6 @@ app.post('/create-profile', verifyToken, (req, res) => {
           return res.status(500).json({ error: 'Internal server error' });
         }
         res.status(201).json({ message: 'Profile created successfully' });
-        console.log(res);
       });
     } else {
       return res.status(400).json({ error: 'Invalid category' });
@@ -400,6 +319,58 @@ app.get('/profiles', (req, res) => {
 
 
 
+// filter the profiles based on parameters
+
+app.get('/filter-profiles', verifyToken, (req, res) => {
+  const {
+    category,
+    businessCategory,
+    businessSubcategory,
+    influencerCategory,
+    influencerSubcategory
+  } = req.query;
+
+  let sql = `
+    SELECT p.*, 
+           bp.businessLocation, bp.businessType, bp.businessCategory, bp.businessSubcategory,
+           ip.contentType, ip.platforms, ip.followers, ip.influencerCategory, ip.influencerSubcategory
+    FROM profile p
+    LEFT JOIN business_profile bp ON p.profileId = bp.profileId
+    LEFT JOIN influencer_profile ip ON p.profileId = ip.profileId
+    WHERE 1=1
+  `;
+
+  let filters = [];
+  
+  if (category) {
+    sql += ' AND p.category = ?';
+    filters.push(category);
+  }
+  if (businessCategory) {
+    sql += ' AND bp.businessCategory = ?';
+    filters.push(businessCategory);
+  }
+  if (businessSubcategory) {
+    sql += ' AND bp.businessSubcategory = ?';
+    filters.push(businessSubcategory);
+  }
+  if (influencerCategory) {
+    sql += ' AND ip.influencerCategory = ?';
+    filters.push(influencerCategory);
+  }
+  if (influencerSubcategory) {
+    sql += ' AND ip.influencerSubcategory = ?';
+    filters.push(influencerSubcategory);
+  }
+
+  db.query(sql, filters, (err, results) => {
+    if (err) {
+      console.error('Error fetching profiles:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.status(200).json(results);
+  });
+});
 
 
 
@@ -425,22 +396,7 @@ app.get('/profiles/:userId', (req, res) => {
   });
 });
 
-// // Example middleware to verify JWT token
-// function verifyToken(req, res, next) {
-//   const token = req.headers.authorization;
 
-//   if (!token) {
-//     return res.status(401).json({ error: 'Token is missing' });
-//   }
-
-//   jwt.verify(token, secretKey, (err, decoded) => {
-//     if (err) {
-//       return res.status(401).json({ error: 'Token is invalid' });
-//     }
-//     req.userId = decoded.userId;
-//     next();
-//   });
-// }
 
 
 

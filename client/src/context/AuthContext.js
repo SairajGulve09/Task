@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setUser(data.userData);
+        console.log("Successfully get currently logged in user");
       }
     } catch (error) {
       console.log("Error in getting data of the currently logged in user", error);

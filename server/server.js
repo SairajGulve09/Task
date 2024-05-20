@@ -62,27 +62,34 @@ db.connect((err) => {
 // Middleware to verify JWT token
 // In the verifyToken middleware in the backend code
 function verifyToken(req, res, next) {
-  const token = req.headers.authorization;
-  console.log('Token received:', token); // Add this line to check token received
+  const authHeader = req.headers.authorization;
+  console.log("Header: ",req.headers.authorization);
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Token is missing' });
+  }
 
+  const token = authHeader.split(' ')[1];
   if (!token) {
-      return res.status(401).json({ error: 'Token is missing' });
+    return res.status(401).json({ error: 'Token is missing' });
   }
 
   jwt.verify(token, secretKey, (err, decoded) => {
-      if (err) {
-          return res.status(401).json({ error: 'Token is invalid' });
-      }
-      req.userId = decoded.userId;
-      next();
+    if (err) {
+      console.error('Error verifying token:', err);
+      return res.status(401).json({ error: 'Token is invalid' });
+    }
+    console.log('Decoded token:', decoded);
+    req.userId = decoded.id;
+    next();
   });
 }
 
 // Route to fetch user data
 app.get('/user',verifyToken, (req, res) => {
-  const userId = req.userId;
-  const sql = 'SELECT * FROM users WHERE userId = ?';
-  db.query(sql, userId, (err, results) => {
+  const id = req.userId;
+  console.log("heyyyy userId: ",id);
+  const sql = 'SELECT * FROM users WHERE id = ?';
+  db.query(sql, id, (err, results) => {
     if (err) {
       console.error('Error fetching user data:', err);
       return res.status(500).json({ error: 'Internal server error' });
@@ -95,25 +102,44 @@ app.get('/user',verifyToken, (req, res) => {
   });
 });
 
-//search profile
-app.get("/search/:key", (req,res)=>{
+// Search profile
+app.get("/search/:key", (req, res) => {
   const key = req.params.key;
-  const sql = 'SELECT * FROM profiles WHERE username LIKE ? OR fullName LIKE ? OR email LIKE ? OR location LIKE ? OR socialMediaIds LIKE ? OR shortDescription LIKE ? OR oneLineDescription LIKE ?;'
   const searchPattern = `%${key}%`;
-  const searchArr = [searchPattern,searchPattern,searchPattern,searchPattern,searchPattern,searchPattern,searchPattern]
+  const sql = `
+    SELECT 
+      p.*,
+      bp.businessLocation, bp.businessType, bp.businessCategory,
+      ip.contentType, ip.platforms, ip.followers
+    FROM 
+      profile p
+      LEFT JOIN business_profile bp ON p.profileId = bp.profileId
+      LEFT JOIN influencer_profile ip ON p.profileId = ip.profileId
+    WHERE 
+      p.username LIKE ? OR 
+      p.firstName LIKE ? OR 
+      p.lastName LIKE ? OR 
+      p.email LIKE ? OR 
+      p.location LIKE ? OR 
+      p.socialMediaIds LIKE ? OR 
+      p.shortDescription LIKE ? OR 
+      p.detailDescription LIKE ?
+  `;
+  const searchArr = Array(8).fill(searchPattern);
 
-  db.query(sql,searchArr,(err,results)=>{
+  db.query(sql, searchArr, (err, results) => {
     if (err) {
-      console.error('Error in searching profile data:', err);
+      console.error('Error searching profile data:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
     if (results.length === 0) {
       return res.status(404).json({ error: 'Profile not found' });
     }
-    // const profileData = results[0];
     res.status(200).json(results);
-  })
-})
+  });
+});
+
+
 
 
 // Route to handle signup
@@ -158,10 +184,15 @@ app.post('/login', (req, res) => {
     if (results.length === 1) {
       console.log('Login successful');
 
-      // Generate JWT token using the secret key from environment variable
-      const payload = { /* Add user data to payload */ };
+      console.log("Payload id",results[0].id);
+      // Extract user data from database results
+      const userData = {
+        id: results[0].id
+      };
+
+      // Generate JWT token using user data as payload
       const options = { expiresIn: '1h' };
-      const token = jwt.sign(payload, secretKey, options);
+      const token = jwt.sign(userData, secretKey, options);
 
       // Send token in response
       return res.status(200).json({ message: 'Login successful', token });
@@ -171,6 +202,7 @@ app.post('/login', (req, res) => {
     }
   });
 });
+
 
 
 
@@ -256,34 +288,115 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Save profile data endpoint
-app.post('/profiles', (req, res) => {
-  const { userId, socialMediaIds, ...profileData } = req.body; // Extract userId and socialMediaIds from req.body
-  profileData.userId = userId; // Add userId to profileData
-  profileData.socialMediaIds = JSON.stringify(socialMediaIds); // Convert socialMediaIds array to JSON string
+app.post('/create-profile', verifyToken, (req, res) => {
+  const {
+    profilePhoto, firstName, lastName, email, location, category,
+    otherCategory, businessLocation, businessType, businessCategory,
+    contentType, platforms, followers, socialMediaIds
+  } = req.body;
 
-  // Insert profile data into MySQL
-  const sql = 'INSERT INTO profiles SET ?';
-  db.query(sql, profileData, (err, result) => {
+  console.log("Id is: ",req.userId);
+
+  // Insert into profile table
+  const profileSql = `
+    INSERT INTO profile (userId, profilePhoto, username, firstName, lastName, email, location, category, otherCategory, socialMediaIds)
+    VALUES (?, ?, CONCAT(?, '_', LOWER(?)), ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const profileValues = [
+    req.userId, profilePhoto, req.userId, firstName, firstName, lastName, email, location, category, otherCategory, JSON.stringify(socialMediaIds)
+  ];
+
+  db.query(profileSql, profileValues, (err, result) => {
     if (err) {
-      console.error('Error saving profile data:', err); // Log the error
-      return res.status(500).send('Error saving profile data');
+      console.error('Error creating profile:', err);
+      return res.status(500).json({ error: 'Internal server error' });
     }
-    console.log('Profile data saved successfully');
-    res.status(200).send('Profile data saved successfully');
+
+    const profileId = result.insertId;
+
+    if (category === 'businessman') {
+      const businessSql = `
+        INSERT INTO business_profile (profileId, businessLocation, businessType, businessCategory)
+        VALUES (?, ?, ?, ?)
+      `;
+      const businessValues = [profileId, businessLocation, businessType, businessCategory];
+
+      db.query(businessSql, businessValues, (err, result) => {
+        if (err) {
+          console.error('Error creating business profile:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.status(201).json({ message: 'Profile created successfully' });
+      });
+    } else if (category === 'influencer') {
+      const influencerSql = `
+        INSERT INTO influencer_profile (profileId, contentType, platforms, followers)
+        VALUES (?, ?, ?, ?)
+      `;
+      const influencerValues = [profileId, contentType, platforms.join(','), followers];
+
+      db.query(influencerSql, influencerValues, (err, result) => {
+        if (err) {
+          console.error('Error creating influencer profile:', err);
+          return res.status(500).json({ error: 'Internal server error' });
+        }
+        res.status(201).json({ message: 'Profile created successfully' });
+        console.log(res);
+      });
+    } else {
+      return res.status(400).json({ error: 'Invalid category' });
+    }
   });
 });
 
-// Route to fetch all profiles (protected route)
+// Route to get all profiles with complete data
 app.get('/profiles', (req, res) => {
-  const sql = 'SELECT * FROM profiles';
+  const sql = `
+    SELECT 
+      p.*,
+      b.businessLocation, b.businessType, b.businessCategory,
+      i.contentType, i.platforms, i.followers
+    FROM 
+      profile p
+      LEFT JOIN business_profile b ON p.profileId = b.profileId
+      LEFT JOIN influencer_profile i ON p.profileId = i.profileId
+  `;
+
   db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching profiles:', err);
       return res.status(500).json({ error: 'Internal server error' });
     }
-    res.status(200).json(results);
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'No profiles found' });
+    }
+
+    // Map results to format response
+    const profiles = results.map(profile => ({
+      profileId: profile.profileId,
+      userId: profile.userId,
+      profilePhoto: profile.profilePhoto,
+      username: profile.username,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      location: profile.location,
+      category: profile.category,
+      otherCategory: profile.otherCategory,
+      socialMediaIds: typeof profile.socialMediaIds === 'string' ? JSON.parse(profile.socialMediaIds) : profile.socialMediaIds,
+      businessLocation: profile.businessLocation,
+      businessType: profile.businessType,
+      businessCategory: profile.businessCategory,
+      contentType: profile.contentType,
+      platforms: profile.platforms ? profile.platforms.split(',') : [],
+      followers: profile.followers
+    }));
+
+    res.status(200).json(profiles);
   });
 });
+
 
 
 
@@ -312,22 +425,22 @@ app.get('/profiles/:userId', (req, res) => {
   });
 });
 
-// Example middleware to verify JWT token
-function verifyToken(req, res, next) {
-  const token = req.headers.authorization;
+// // Example middleware to verify JWT token
+// function verifyToken(req, res, next) {
+//   const token = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).json({ error: 'Token is missing' });
-  }
+//   if (!token) {
+//     return res.status(401).json({ error: 'Token is missing' });
+//   }
 
-  jwt.verify(token, secretKey, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ error: 'Token is invalid' });
-    }
-    req.userId = decoded.userId;
-    next();
-  });
-}
+//   jwt.verify(token, secretKey, (err, decoded) => {
+//     if (err) {
+//       return res.status(401).json({ error: 'Token is invalid' });
+//     }
+//     req.userId = decoded.userId;
+//     next();
+//   });
+// }
 
 
 

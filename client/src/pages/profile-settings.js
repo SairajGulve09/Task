@@ -16,37 +16,37 @@ const ProfileSettingPage = () => {
    
   });
 
-  useEffect(() => {
-    // Fetch user data from the backend
-    fetchUserData();
-  }, []); // Dependency array is empty to ensure it only runs once on component mount
+  // useEffect(() => {
+  //   // Fetch user data from the backend
+  //   fetchUserData();
+  // }, []); // Dependency array is empty to ensure it only runs once on component mount
 
-  const fetchUserData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Token not found in local storage');
-      }
+  // const fetchUserData = async () => {
+  //   try {
+  //     const token = localStorage.getItem('token');
+  //     if (!token) {
+  //       throw new Error('Token not found in local storage');
+  //     }
   
-      const response = await fetch('http://localhost:5000/user', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  //     const response = await fetch('http://localhost:5000/user', {
+  //       headers: {
+  //         Authorization: `${token}`,
+  //       },
+  //     });
   
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
-      }
+  //     if (!response.ok) {
+  //       throw new Error('Failed to fetch user data');
+  //     }
   
-      const userData = await response.json();
-      setProfileData(prevProfileData => ({
-        ...prevProfileData,
-        ...userData,
-      }));
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
+  //     const userData = await response.json();
+  //     setProfileData(prevProfileData => ({
+  //       ...prevProfileData,
+  //       ...userData,
+  //     }));
+  //   } catch (error) {
+  //     console.error('Error fetching user data:', error);
+  //   }
+  // };
   
   
   

@@ -1,29 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { NavLink } from 'react-router-dom'
+import axios from 'axios'; // Add axios for making API requests
 
 function Navbar() {
-  // State variables
   const [showDropdown, setShowDropdown] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
-  
-  // Hooks
+  const [searchQuery, setSearchQuery] = useState(''); // State for search input
+  const [searchResults, setSearchResults] = useState([]); // State for search results
+
   const navigate = useNavigate();
   const { isLoggedIn, LogoutUser } = useAuth();
 
-  // Update the loggedIn state when the isLoggedIn value changes
   useEffect(() => {
     setLoggedIn(isLoggedIn);
   }, [isLoggedIn]);
 
-  // Handle logout
   const handleLogout = () => {
     LogoutUser();
     navigate('/login');
   };
 
-  // JSX code for the navbar
+  // Handle search input change
+  const handleSearchChange = async (e) => {
+    const { value } = e.target;
+    setSearchQuery(value);
+
+    if(value.trim().length==0){
+      navigate("/")
+    }
+
+    if (value.trim().length > 0) {
+      try {
+        const response = await axios.get(`http://localhost:5000/search/${value}`);
+        setSearchResults(response.data);
+      } catch (error) {
+        console.error('Error searching profiles:', error);
+        setSearchResults([]);
+      }
+    } else {
+      setSearchResults([]);
+    }
+  };
+
   return (
     <nav className="bg-gray-800 py-4">
       <div className="container mx-auto flex justify-between items-center">
@@ -31,7 +50,7 @@ function Navbar() {
         <div className="flex items-center">
           <div className="flex items-center mr-8">
             <Link to="/" className="mr-4">
-              <img src='/' alt="Logo" className="h-16 w-16" />
+              <img src="/" alt="Logo" className="h-16 w-16" />
             </Link>
             <Link to="/" className="text-white mr-4">Homepage</Link>
             <Link to="/pricing" className="text-white mr-4">Pricing</Link>
@@ -49,7 +68,15 @@ function Navbar() {
                   <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clipRule="evenodd" />
                 </svg>
               </div>
-              <input id="search" className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 leading-5 text-gray-900 placeholder-gray-500 focus:border-purple-500 focus:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 sm:text-sm" placeholder="Search" type="search" name="search" />
+              <input
+                id="search"
+                className="block w-full rounded-md border border-gray-300 bg-white py-2 pl-10 pr-3 leading-5 text-gray-900 placeholder-gray-500 focus:border-purple-500 focus:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-purple-500 sm:text-sm"
+                placeholder="Search"
+                type="search"
+                name="search"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
             </div>
           </div>
         </div>
@@ -83,6 +110,24 @@ function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Display search results */}
+      {searchQuery && searchResults.length > 0 && (
+        <div className="container mx-auto mt-4">
+          <div className="bg-white shadow-md rounded-lg p-4">
+            <h2 className="text-gray-800 text-lg font-bold">Search Results:</h2>
+            <ul className="mt-2">
+              {searchResults.map((result) => (
+                <li key={result.profileId} className="py-2 border-b border-gray-200">
+                  <Link to={`/profile/${result.profileId}`} className="text-blue-500 hover:underline">
+                    {result.username} - {result.category} {result.location}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

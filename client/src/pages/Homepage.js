@@ -38,13 +38,10 @@ const Homepage = () => {
 
 
     return (
-        <div className="flex">
+        <div className="flex ">
             <Filter />
             <Carousel />
             <Sidebar />
-                
-          
-            
         </div>
     );
 };

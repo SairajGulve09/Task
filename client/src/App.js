@@ -18,6 +18,8 @@ import {} from "./context/AuthContext"
 import Logout from './components/Logout';
 import ProfilePage from './pages/ProfilePage';
 import ProfileList from './components/ProfileList';
+import CreateProfileForm from './pages/CreateProfileForm';
+import Profile from './pages/Profile';
 
 const App = () => {
   
@@ -34,10 +36,12 @@ const App = () => {
             <Route exact path="/logout" element={<Logout />} />
             <Route exact path="/signup" element={<Signup />} />
             <Route exact path="/pricing" element={<Pricing />} />
-            <Route exact path="/profile-page" element={<ProfileList />} />
+            {/* <Route exact path="/profile-page" element={<ProfileList />} /> */}
             <Route exact path="/profiles" element={<Profilepage />} />
             <Route exact path="/Dashboard" element={<Dashboard />} />
-            <Route exact path="/profile-settings" element={<ProfileSettings />} />
+            {/* <Route exact path="/profile-settings" element={<ProfileSettings />} /> */}
+            <Route exact path="/profile/:profileId" element={<Profile />} />
+            <Route exact path="/profile-settings" element={<CreateProfileForm />} />
             <Route exact path="/forgotPassword" element={<ForgotPassword />} />
             <Route exact path="/Sidebar" element={<Sidebar />} />
             <Route exact path="/carousel" element={<Carousel />} />

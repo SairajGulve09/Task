@@ -123,7 +123,7 @@ app.get("/search/:key", (req, res) => {
       p.location LIKE ? OR 
       p.socialMediaIds LIKE ? OR 
       p.shortDescription LIKE ? OR 
-      p.detailDescription LIKE ?
+      p.oneLineDescription LIKE ?
   `;
   const searchArr = Array(8).fill(searchPattern);
 
@@ -212,18 +212,19 @@ app.post('/create-profile', verifyToken, (req, res) => {
     profilePhoto, firstName, lastName, email, location, category,
     otherCategory, businessLocation, businessType, businessCategory,
     businessSubcategory, influencerCategory, influencerSubcategory,
-    contentType, platforms, followers, socialMediaIds
+    contentType, platforms, followers, socialMediaIds,
+    oneLineDescription, shortDescription
   } = req.body;
 
   console.log("Id is: ", req.userId);
 
   // Insert into profile table
   const profileSql = `
-    INSERT INTO profile (userId, profilePhoto, username, firstName, lastName, email, location, category, otherCategory, socialMediaIds)
-    VALUES (?, ?, CONCAT(?, '_', LOWER(?)), ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO profile (userId, profilePhoto, username, firstName, lastName, email, location, category, otherCategory, socialMediaIds, oneLineDescription, shortDescription)
+    VALUES (?, ?, CONCAT(?, '_', LOWER(?)), ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const profileValues = [
-    req.userId, profilePhoto, req.userId, firstName, firstName, lastName, email, location, category, otherCategory, JSON.stringify(socialMediaIds)
+    req.userId, profilePhoto, req.userId, firstName, firstName, lastName, email, location, category, otherCategory, JSON.stringify(socialMediaIds), oneLineDescription, shortDescription
   ];
 
   db.query(profileSql, profileValues, (err, result) => {
@@ -268,6 +269,7 @@ app.post('/create-profile', verifyToken, (req, res) => {
   });
 });
 
+
 // Route to get all profiles with complete data
 app.get('/profiles', (req, res) => {
   const sql = `
@@ -304,6 +306,8 @@ app.get('/profiles', (req, res) => {
       category: profile.category,
       otherCategory: profile.otherCategory,
       socialMediaIds: typeof profile.socialMediaIds === 'string' ? JSON.parse(profile.socialMediaIds) : profile.socialMediaIds,
+      oneLineDescription: profile.oneLineDescription,
+      shortDescription: profile.shortDescription,
       businessLocation: profile.businessLocation,
       businessType: profile.businessType,
       businessCategory: profile.businessCategory,
@@ -315,6 +319,7 @@ app.get('/profiles', (req, res) => {
     res.status(200).json(profiles);
   });
 });
+
 
 
 
@@ -376,11 +381,11 @@ app.get('/filter-profiles', verifyToken, (req, res) => {
 
 
 // Route to fetch profile data based on userId
-app.get('/profiles/:userId', (req, res) => {
+app.get('/profiles/:userId',verifyToken, (req, res) => {
   const userId = req.params.userId;
 
   // Query the database to fetch the profile data for the provided userId
-  const sql = 'SELECT * FROM profiles WHERE userId = ?';
+  const sql = 'SELECT * FROM profile WHERE userId = ?';
   db.query(sql, userId, (err, results) => {
     if (err) {
       console.error('Error fetching profile data:', err);
@@ -396,6 +401,81 @@ app.get('/profiles/:userId', (req, res) => {
   });
 });
 
+// Route to fetch profile data based on profileId
+app.get('/profile/:profileId',verifyToken, (req, res) => {
+  const profileId = req.params.profileId;
+
+  // Query the database to fetch the profile data for the provided userId
+  const sql = 'SELECT * FROM profile WHERE profileId = ?';
+  db.query(sql, profileId, (err, results) => {
+    if (err) {
+      console.error('Error fetching profile data:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const profileData = results[0]; // Assuming userId is unique, so there should be only one result
+    res.status(200).json(profileData);
+  });
+});
+
+
+
+// Route to fetch highlighted profiles
+app.get('/highlighted-profiles', (req, res) => {
+  // Modify the SQL query to fetch highlighted profiles based on specific criteria
+  const sql = `
+  SELECT p.*
+  FROM profile p
+  LEFT JOIN influencer_profile i ON p.profileId = i.profileId
+  LEFT JOIN business_profile b ON p.profileId = b.profileId
+  WHERE 
+    (p.category = 'influencer' AND i.followers = '1M+') 
+    OR
+    (p.category = 'businessman' AND b.businessType = 'Retail' AND b.businessCategory = 'Retail Trade') 
+  LIMIT 3  
+  `;
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching highlighted profiles:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.status(200).json(results);
+  });
+});
+
+// Route to fetch recently joined profiles
+app.get('/recently-joined', (req, res) => {
+  // Modify the SQL query to fetch recently joined profiles based on specific criteria
+  const sql = `
+  SELECT *
+  FROM profile
+  ORDER BY profileId DESC
+  LIMIT 3  
+  `;
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching recently joined profiles:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.status(200).json(results);
+  });
+});
+
+// Route to fetch users with collaborations (limited to three)
+// app.get('/collaborations', (req, res) => {
+//   const sql = 'SELECT * FROM profiles WHERE collaboration IS NOT NULL AND collaboration != "" LIMIT 3';
+//   db.query(sql, (err, results) => {
+//     if (err) {
+//       console.error('Error fetching users with collaborations:', err);
+//       return res.status(500).json({ error: 'Internal server error' });
+//     }
+//     res.status(200).json(results);
+//   });
+// }); 
 
 
 

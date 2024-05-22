@@ -79,7 +79,7 @@ const Sidebar = () => {
         <ul>
           {recentlyJoined.map(profile => (
             <li key={profile.profileId} className="flex items-center mb-2">
-              <img src={photo} alt={profile.username} className="w-12 h-12 rounded-full mr-2" />
+              <img src={profile.profilePhoto} alt={profile.username} className="w-12 h-12 rounded-full mr-2" />
               <div>
                 <p className="font-bold">{profile.firstName} {profile.lastName}</p>
                 <p className="text-sm text-gray-500">{profile.location}</p>

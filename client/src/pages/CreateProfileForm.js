@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const CreateProfileForm = () => {
     const [profileData, setProfileData] = useState({
-        profilePhoto: '',
+        profilePhoto: null,
         firstName: '',
         lastName: '',
         email: '',
@@ -45,6 +45,10 @@ const CreateProfileForm = () => {
         }
     };
 
+    const handleFileChange = (e) => {
+        setProfileData({ ...profileData, profilePhoto: e.target.files[0] });
+      };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -60,10 +64,15 @@ const CreateProfileForm = () => {
                 }
             });
 
+            console.log(profileData.profilePhoto.name);
+
+            formData.append('profilePhoto', profileData.profilePhoto.name);
+
+
             const response = await axios.post('http://localhost:5000/create-profile', formData, {
                 headers: {
                     Authorization: `Bearer ${token}`, // Fixed template string syntax
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'multipart/form-data'
                 }
             });
 
@@ -79,7 +88,21 @@ const CreateProfileForm = () => {
     return (
         <form onSubmit={handleSubmit} className="max-w-lg mx-auto mt-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
+            <div>
+                    <label htmlFor="profilePhoto" className="block text-sm font-medium text-gray-700">
+                        Photo
+                    </label>
+                    <input
+                        type="file"
+                        name="profilePhoto"
+                        id="profilePhoto"
+                         
+                        onChange={handleFileChange}
+                        // value={profileData.profilePhoto}
+                        autoComplete="given-name"
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
+                    />
+                </div>
                 <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
                         First Name
@@ -148,7 +171,7 @@ const CreateProfileForm = () => {
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200"
                     >
                         <option value="">Select Category</option>
-                        <option value="business">Business</option>
+                        <option value="businessman">Business</option>
                         <option value="influencer">Influencer</option>
                         <option value="other">Other</option>
                     </select>
@@ -168,7 +191,7 @@ const CreateProfileForm = () => {
                         />
                     </div>
                 )}
-                {profileData.category === 'business' && (
+                {profileData.category === 'businessman' && (
                     <>
                         <div>
                             <label htmlFor="businessCategory" className="block text-sm font-medium text-gray-700">

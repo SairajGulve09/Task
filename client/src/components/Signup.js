@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate} from "react-router-dom";
 import axios from 'axios';
+import { useAuth } from "../context/AuthContext";
 
 const Signin = () => {
   const [formData, setFormData] = useState({
@@ -10,7 +11,8 @@ const Signin = () => {
     confirm_password: '',
   });
 
-  const Navigate = useNavigate(); // Initialize useHistory hook
+  const {storeTokenInLs} = useAuth();
+  const navigate = useNavigate(); // Initialize useHistory hook
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -19,18 +21,29 @@ const Signin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5000/signup', formData);
-      console.log(response.data);
-      // Handle successful signup
-      Navigate('/profile-settings'); // Redirect to profile settings page
-    } catch (error) {
-      if (error.response) {
-        console.error('Signup failed:', error.response.data);
-        // Handle signup error
-      } else {
-        console.error('Signup failed:', error.message);
-      }
-    }
+      const response = await fetch(`http://localhost:5000/signup`,{
+      method: "POST",
+      headers:{
+          "Content-Type":"application/json",
+      },
+      body:JSON.stringify({...formData}),
+  });
+
+  if(response.ok)
+  {
+      const res_data = await response.json();
+      console.log("Response data: ", res_data);
+      console.log("Token", res_data.token)
+      storeTokenInLs(res_data.token);
+      navigate("/profile-setting")
+  }
+
+  console.log(response);
+
+  } catch (error) {
+      // toast.error("Error in registration")
+      console.log("Error in registration",error);
+  }
   };
   
   

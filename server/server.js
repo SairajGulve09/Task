@@ -10,6 +10,8 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { Server } = require("socket.io");
+const fs = require('fs');
+
 // const {verifyToken} = require("./verifyToken")
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +34,18 @@ app.use(cors({
 
 
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Static folder for uploaded files
+app.use('/uploads', express.static(uploadsDir));
+
+
 
 
 
@@ -113,9 +127,16 @@ app.get("/search/:key", (req, res) => {
       p.location LIKE ? OR 
       p.socialMediaIds LIKE ? OR 
       p.shortDescription LIKE ? OR 
-      p.oneLineDescription LIKE ? 
+      p.oneLineDescription LIKE ? OR
+      p.category LIKE ? OR
+      bp.businessType LIKE ? OR
+      bp.businessCategory LIKE ? OR
+      bp.businessSubCategory LIKE ? OR
+      ip.contentType LIKE ? OR
+      ip.influencerCategory LIKE ? OR
+      ip.influencerSubCategory LIKE ? 
   `;
-  const searchArr = Array(8).fill(searchPattern);
+  const searchArr = Array(15).fill(searchPattern);
 
   db.query(sql, searchArr, (err, results) => {
     if (err) {
@@ -138,16 +159,17 @@ app.post('/signup', (req, res) => {
   const sql = 'INSERT INTO users (fullname, email, password, confirm_password) VALUES (?, ?, ?, ?)';
   const values = [fullname, email, password,confirm_password];
 
-  db.query(sql, values, (err, result) => {
+  db.query(sql, values, (err, results) => {
     if (err) {
       console.error('Signup failed:', err);
       return res.status(500).send('Signup failed');
     }
 
     console.log('User registered successfully');
-
+    console.log(results);
+    console.log("Payload id",results.insertId);
     const userData = {
-      id: result[0].id
+      id: results.insertId
     };
     const options = { expiresIn: '1h' };
     const token = jwt.sign(userData, secretKey, options);
@@ -195,16 +217,31 @@ app.post('/login', (req, res) => {
   });
 });
 
+// Multer setup for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage }).single('profilePhoto');
 
 // Save profile data endpoint
-app.post('/create-profile', verifyToken, (req, res) => {
+app.post('/create-profile', verifyToken, upload, (req, res) => {
   const {
-    profilePhoto, firstName, lastName, email, location, category,
+    firstName, lastName, email, location, category,
     otherCategory, businessLocation, businessType, businessCategory,
     businessSubcategory, influencerCategory, influencerSubcategory,
     contentType, platforms, followers, socialMediaIds,
     oneLineDescription, shortDescription
   } = req.body;
+
+  console.log(req.file);
+
+  const profilePhoto = req.file ? req.file.path : null;
 
   console.log("Id is: ", req.userId);
 

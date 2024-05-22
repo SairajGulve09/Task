@@ -20,6 +20,8 @@ import ProfilePage from './pages/ProfilePage';
 import ProfileList from './components/ProfileList';
 import CreateProfileForm from './pages/CreateProfileForm';
 import Profile from './pages/Profile';
+import Contact from './pages/Contact';
+import About from './pages/About';
 
 const App = () => {
   
@@ -36,6 +38,8 @@ const App = () => {
             <Route exact path="/logout" element={<Logout />} />
             <Route exact path="/signup" element={<Signup />} />
             <Route exact path="/pricing" element={<Pricing />} />
+            <Route exact path="/contact" element={<Contact />} />
+            <Route exact path="/about" element={<About />} />
             {/* <Route exact path="/profile-page" element={<ProfileList />} /> */}
             <Route exact path="/profiles" element={<Profilepage />} />
             <Route exact path="/Dashboard" element={<Dashboard />} />

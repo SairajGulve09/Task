@@ -29,21 +29,11 @@ app.use(cors({
   credentials: true, // Allow sending cookies with requests
 }));
 
-// Serve static files (photos) from the 'public/uploads' directory
-app.use('/photos', express.static(path.join(__dirname, 'public', 'uploads')));
+
 
 app.use(bodyParser.json());
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'public', 'uploads'));
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
 
-const upload = multer({ storage });
 
 const db = mysql.createConnection({
   host: 'localhost',
@@ -123,7 +113,7 @@ app.get("/search/:key", (req, res) => {
       p.location LIKE ? OR 
       p.socialMediaIds LIKE ? OR 
       p.shortDescription LIKE ? OR 
-      p.oneLineDescription LIKE ?
+      p.oneLineDescription LIKE ? 
   `;
   const searchArr = Array(8).fill(searchPattern);
 
@@ -321,6 +311,56 @@ app.get('/profiles', (req, res) => {
 });
 
 
+// Route to get all profiles with complete data
+app.get('/home-profiles', (req, res) => {
+  const sql = `
+    SELECT 
+      p.*,
+      b.businessLocation, b.businessType, b.businessCategory,
+      i.contentType, i.platforms, i.followers
+    FROM 
+      profile p
+      LEFT JOIN business_profile b ON p.profileId = b.profileId
+      LEFT JOIN influencer_profile i ON p.profileId = i.profileId
+    LIMIT 8
+  `;
+
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching profiles:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'No profiles found' });
+    }
+
+    // Map results to format response
+    const profiles = results.map(profile => ({
+      profileId: profile.profileId,
+      userId: profile.userId,
+      profilePhoto: profile.profilePhoto,
+      username: profile.username,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      email: profile.email,
+      location: profile.location,
+      category: profile.category,
+      otherCategory: profile.otherCategory,
+      socialMediaIds: typeof profile.socialMediaIds === 'string' ? JSON.parse(profile.socialMediaIds) : profile.socialMediaIds,
+      oneLineDescription: profile.oneLineDescription,
+      shortDescription: profile.shortDescription,
+      businessLocation: profile.businessLocation,
+      businessType: profile.businessType,
+      businessCategory: profile.businessCategory,
+      contentType: profile.contentType,
+      platforms: profile.platforms ? profile.platforms.split(',') : [],
+      followers: profile.followers
+    }));
+
+    res.status(200).json(profiles);
+  });
+});
 
 
 

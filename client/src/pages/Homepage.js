@@ -3,6 +3,7 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import Carousel from '../components/carousel';
 import Filter from '../components/filter';
+import ProfileList from '../components/ProfileList';
 
 const Homepage = () => {
     const [profiles, setProfiles] = useState([]);
@@ -38,11 +39,16 @@ const Homepage = () => {
 
 
     return (
-        <div className="flex ">
-            <Filter />
-            <Carousel />
-            <Sidebar />
-        </div>
+        <>
+            <div className="flex ">
+                <Filter />
+                <Carousel />
+                <Sidebar />
+            </div>
+            <div>
+                <ProfileList />
+            </div>
+        </>
     );
 };
 

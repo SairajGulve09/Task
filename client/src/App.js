@@ -22,6 +22,7 @@ import CreateProfileForm from './pages/CreateProfileForm';
 import Profile from './pages/Profile';
 import Contact from './pages/Contact';
 import About from './pages/About';
+import TermsAndConditions from './pages/TermsAndConditions';
 
 const App = () => {
   
@@ -40,6 +41,8 @@ const App = () => {
             <Route exact path="/pricing" element={<Pricing />} />
             <Route exact path="/contact" element={<Contact />} />
             <Route exact path="/about" element={<About />} />
+            
+            <Route exact path="/terms-and-conditions" element={<TermsAndConditions />} />
             {/* <Route exact path="/profile-page" element={<ProfileList />} /> */}
             <Route exact path="/profiles" element={<Profilepage />} />
             <Route exact path="/Dashboard" element={<Dashboard />} />

@@ -359,7 +359,7 @@ app.get('/home-profiles', (req, res) => {
       profile p
       LEFT JOIN business_profile b ON p.profileId = b.profileId
       LEFT JOIN influencer_profile i ON p.profileId = i.profileId
-    LIMIT 8
+    LIMIT 6
   `;
 
   db.query(sql, (err, results) => {
